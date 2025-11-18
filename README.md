@@ -4,180 +4,52 @@
 ![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Un pipeline ETL complet pour extraire, transformer et analyser les données YouTube.
+Un pipeline ETL complet pour **extraire, transformer et analyser les données YouTube**, permettant aux créateurs, agences et analystes d’avoir une vue complète et historique des performances des chaînes et vidéos.
+
+---
 
 ## 📋 Table des Matières
 
-- [Fonctionnalités](#fonctionnalités)
-- [Architecture](#architecture)
-- [Prérequis](#prérequis)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Utilisation](#utilisation)
-- [Structure du Projet](#structure-du-projet)
-- [Métriques Calculées](#métriques-calculées)
+- [Fonctionnalités](#fonctionnalités)  
+- [Architecture](#architecture)  
+- [Prérequis](#prérequis)  
+- [Installation](#installation)  
+- [Configuration](#configuration)  
+- [Utilisation](#utilisation)  
+- [Structure du Projet](#structure-du-projet)  
+- [Métriques Calculées](#métriques-calculées)  
+- [Auteur](#auteur)  
+
+---
 
 ## ✨ Fonctionnalités
 
 ### 📥 Extraction
-- ✅ Données vidéos (titre, vues, likes, durée, tags)
-- ✅ Statistiques de chaînes (abonnés, vues totales)
-- ✅ Commentaires avec analyse de sentiment
-- ✅ Données de tendances par catégorie
+- Données vidéos : titre, vues, likes, durée, tags  
+- Statistiques des chaînes : abonnés, vues totales  
+- Commentaires avec analyse de sentiment  
+- Tendances par catégorie  
 
 ### 🔄 Transformation
-- ✅ Nettoyage et validation des données
-- ✅ Calcul de 20+ métriques (engagement rate, view velocity)
-- ✅ Détection d'anomalies et alertes
-- ✅ Enrichissement avec analyse de sentiment
+- Nettoyage et validation des données  
+- Calcul de 20+ métriques clés (engagement rate, view velocity…)  
+- Détection d’anomalies et alertes automatiques  
+- Enrichissement avec analyse de sentiment des commentaires  
 
-### 💾 Loading
-- ✅ Data Warehouse avec modèle en étoile (Star Schema)
-- ✅ Historisation complète (SCD Type 2)
-- ✅ Tables optimisées pour analytics
+### 💾 Chargement (Loading)
+- Data Lake + Data Warehouse avec **Snowflake**  
+- Historisation complète (SCD Type 2)  
+- Tables prêtes pour analytics et BI  
 
-### 📊 Analytics
-- ✅ Dashboards interactifs (Metabase)
-- ✅ Analyse de tendances
-- ✅ Comparaison concurrentielle
-- ✅ Prédictions de performance
+### 📊 Analytics & BI
+- Dashboards interactifs (Metabase)  
+- Analyse de tendances et performance vidéo  
+- Comparaison concurrentielle entre chaînes  
+- Prédictions de performance et recommandations  
+
+---
 
 ## 🏗️ Architecture
 
-YouTube API → Extraction → Transformation → Data Warehouse → Dashboards
-↓ ↓ ↓
-Raw Data Cleaned Data Star Schema
-(Bronze) (Silver) (Gold)
-
-bash
-Copier le code
-
-## 🔧 Prérequis
-
-- Python 3.9+
-- Docker & Docker Compose
-- YouTube Data API Key (gratuit)
-- 4GB RAM minimum
-
-## 🚀 Installation
-
-### 1. Cloner le repository
-
-```bash
-git clone https://github.com/chadia08/youtube-analytics-etl.git
-cd youtube-analytics-etl
-2. Créer un environnement virtuel
-bash
-Copier le code
-python -m venv venv
-
-# Activer (Mac/Linux)
-source venv/bin/activate
-
-# Activer (Windows)
-venv\Scripts\activate
-3. Installer les dépendances
-bash
-Copier le code
-pip install --upgrade pip
-pip install -r requirements.txt
-4. Configurer les variables d'environnement
-bash
-Copier le code
-cp .env.example .env
-nano .env  # Ajoutez votre YouTube API Key
-📖 Voir scripts/generate_api_key.md pour obtenir votre clé API.
-
-5. Démarrer l'infrastructure Docker
-bash
-Copier le code
-docker-compose up -d
-Cela démarre :
-
-PostgreSQL (port 5432)
-
-Airflow (port 8080)
-
-Metabase (port 3001)
-
-MinIO (port 9000)
-
-⚙️ Configuration
-Configurer les chaînes à analyser
-bash
-Copier le code
-nano config/youtube_channels.yaml
-yaml
-Copier le code
-channels:
-  - channel_id: "UCCezIgC97PvUuR4_gbFUs5g"
-    name: "Fireship"
-    category: "Tech"
-  
-  - channel_id: "UC8butISFwT-Wl7EV0hUK0BQ"
-    name: "freeCodeCamp"
-    category: "Education"
-🎯 Utilisation
-Exécution manuelle du pipeline
-bash
-Copier le code
-# Extraction seulement
-python src/extraction/video_extractor.py
-
-# Pipeline complet
-python scripts/run_etl.sh
-Avec Airflow (recommandé)
-Accéder à Airflow : http://localhost:8080
-
-Login : admin / admin
-
-Activer le DAG youtube_daily_etl
-
-Voir les dashboards
-Accéder à Metabase : http://localhost:3001
-
-Configurer la connexion PostgreSQL :
-
-Host: postgres
-
-Database: youtube_analytics
-
-User: youtube_user
-
-Password: youtube_password_123
-
-📁 Structure du Projet
-powershell
-Copier le code
-youtube-analytics-etl/
-├── src/
-│   ├── extraction/       # Extraction YouTube API
-│   ├── transformation/   # Nettoyage & enrichissement
-│   ├── loading/          # Chargement DuckDB/PostgreSQL
-│   ├── quality/          # Validation Great Expectations
-│   └── utils/            # Utilitaires
-├── airflow/
-│   └── dags/             # DAGs Airflow
-├── data/
-│   ├── raw/              # Données brutes (Bronze)
-│   ├── processed/        # Données transformées (Silver)
-│   └── warehouse/        # DuckDB (Gold)
-├── dashboards/           # Dashboards Metabase/Superset
-├── notebooks/            # Jupyter notebooks
-└── tests/                # Tests unitaires
-📊 Métriques Calculées
-Métrique	Formule	Description
-Engagement Rate	(Likes + Comments) / Views × 100	Mesure l'interaction
-View Velocity	Views / Hours Since Published	Vitesse de propagation
-Like Rate	Likes / Views × 100	Taux d'appréciation
-Comment Rate	Comments / Views × 100	Taux de discussion
-Viral Score	View Velocity / Channel Avg	Détection viralité
-
-
-
-
-
-
-👤 Auteur
-Chadia - @chadia08
+**Pipeline Medallion Architecture :**
 
