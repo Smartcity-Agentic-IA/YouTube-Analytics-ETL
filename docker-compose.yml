@@ -2,98 +2,7 @@ version: '3.8'
 
 services:
   # ================================
-  # PostgreSQL - Base de données principale
-  # ================================
-  postgres:
-    image: postgres:15-alpine
-    container_name: youtube_postgres
-    restart: always
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: youtube_user
-      POSTGRES_PASSWORD: youtube_password_123
-      POSTGRES_DB: youtube_analytics
-      POSTGRES_INITDB_ARGS: "-E UTF8"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init_postgres.sql:/docker-entrypoint-initdb.d/01_init.sql
-    networks:
-      - youtube_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U youtube_user -d youtube_analytics"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ================================
-  # PgAdmin - Interface PostgreSQL (optionnel)
-  # ================================
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: youtube_pgadmin
-    restart: always
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@youtube.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - youtube_network
-    depends_on:
-      - postgres
-
-  # ================================
-  # MinIO - Stockage S3-compatible (Data Lake)
-  # ================================
-  minio:
-    image: minio/minio:latest
-    container_name: youtube_minio
-    restart: always
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-    networks:
-      - youtube_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  # ================================
-  # MinIO Client - Création automatique du bucket
-  # ================================
-  minio-setup:
-    image: minio/mc:latest
-    container_name: youtube_minio_setup
-    depends_on:
-      - minio
-    networks:
-      - youtube_network
-    entrypoint: >
-      /bin/sh -c "
-      sleep 5;
-      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin123;
-      /usr/bin/mc mb myminio/youtube-data --ignore-existing;
-      /usr/bin/mc mb myminio/youtube-raw --ignore-existing;
-      /usr/bin/mc mb myminio/youtube-processed --ignore-existing;
-      /usr/bin/mc anonymous set download myminio/youtube-data;
-      echo 'MinIO buckets created successfully';
-      exit 0;
-      "
-
-  # ================================
-  # Redis - Cache pour Airflow
+  # Redis - OBLIGATOIRE pour Airflow
   # ================================
   redis:
     image: redis:7-alpine
@@ -110,7 +19,7 @@ services:
       retries: 5
 
   # ================================
-  # Airflow Database - PostgreSQL pour Airflow
+  # Airflow Database
   # ================================
   airflow-postgres:
     image: postgres:15-alpine
@@ -120,6 +29,7 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
+      POSTGRES_INITDB_ARGS: "-E UTF8"
     volumes:
       - airflow_postgres_data:/var/lib/postgresql/data
     networks:
@@ -158,6 +68,14 @@ services:
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin
+      # Variables Snowflake
+      SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
+      SNOWFLAKE_USER: ${SNOWFLAKE_USER}
+      SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
+      SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
+      SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-YOUTUBE_ANALYTICS}
+      SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA:-PUBLIC}
+      SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-ACCOUNTADMIN}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
@@ -194,6 +112,14 @@ services:
       AIRFLOW__CORE__FERNET_KEY: 'UKMzEm3yIuFYEq1y3-2FxPNWSVwRASpahmQ9kQfEr8E='
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      # Variables Snowflake
+      SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
+      SNOWFLAKE_USER: ${SNOWFLAKE_USER}
+      SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
+      SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
+      SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-YOUTUBE_ANALYTICS}
+      SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA:-PUBLIC}
+      SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-ACCOUNTADMIN}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
@@ -207,7 +133,7 @@ services:
     command: scheduler
 
   # ================================
-  # Airflow Worker (Celery)
+  # Airflow Worker
   # ================================
   airflow-worker:
     build:
@@ -226,6 +152,14 @@ services:
       AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
       AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
       AIRFLOW__CORE__FERNET_KEY: 'UKMzEm3yIuFYEq1y3-2FxPNWSVwRASpahmQ9kQfEr8E='
+      # Variables Snowflake
+      SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
+      SNOWFLAKE_USER: ${SNOWFLAKE_USER}
+      SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
+      SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
+      SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-YOUTUBE_ANALYTICS}
+      SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA:-PUBLIC}
+      SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-ACCOUNTADMIN}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
@@ -239,7 +173,7 @@ services:
     command: celery worker
 
   # ================================
-  # Metabase - Business Intelligence
+  # Metabase - OPTIONNEL mais recommandé
   # ================================
   metabase:
     image: metabase/metabase:latest
@@ -251,58 +185,23 @@ services:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabase
       MB_DB_PORT: 5432
-      MB_DB_USER: youtube_user
-      MB_DB_PASS: youtube_password_123
-      MB_DB_HOST: postgres
+      MB_DB_USER: airflow
+      MB_DB_PASS: airflow
+      MB_DB_HOST: airflow-postgres
     volumes:
       - metabase_data:/metabase-data
     networks:
       - youtube_network
     depends_on:
-      postgres:
+      airflow-postgres:
         condition: service_healthy
 
-  # ================================
-  # Jupyter Notebook - Data Exploration
-  # ================================
-  jupyter:
-    build:
-      context: .
-      dockerfile: docker/jupyter/Dockerfile
-    container_name: youtube_jupyter
-    restart: always
-    ports:
-      - "8888:8888"
-    environment:
-      JUPYTER_ENABLE_LAB: "yes"
-    volumes:
-      - ./notebooks:/home/jovyan/work
-      - ./src:/home/jovyan/src
-      - ./data:/home/jovyan/data
-      - ./config:/home/jovyan/config
-      - ./.env:/home/jovyan/.env
-    networks:
-      - youtube_network
-    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
-
-# ================================
-# Volumes persistants
-# ================================
 volumes:
-  postgres_data:
-    driver: local
-  pgadmin_data:
-    driver: local
   airflow_postgres_data:
-    driver: local
-  minio_data:
     driver: local
   metabase_data:
     driver: local
 
-# ================================
-# Réseau
-# ================================
 networks:
   youtube_network:
     driver: bridge
