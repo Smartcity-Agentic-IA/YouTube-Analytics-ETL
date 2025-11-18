@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data
+data/raw/*
+data/processed/*
+data/warehouse/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/warehouse/.gitkeep
+
+# Airflow
+airflow/logs/*
+airflow/*.db
+airflow/*.pid
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+credentials.json
+*_key.json
